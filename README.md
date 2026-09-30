@@ -5,8 +5,7 @@ Laravel 11 (API, Sanctum) + React (Vite) + MySQL, chạy bằng Docker Compose.
 ## Chạy nhanh (chỉ cần Docker Desktop)
 
 ```bash
-# 1) Tải bộ khung Laravel + chép code Taskflow vào backend/  (chạy 1 lần, ~1 phút)
-./setup.sh          # Windows: bấm đúp setup.bat hoặc chạy trong CMD
+# 1) git clone <URL repo>
 
 # 2) Khởi động toàn bộ
 docker compose up --build
