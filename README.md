@@ -1,3 +1,5 @@
+<img width="1907" height="841" alt="image" src="https://github.com/user-attachments/assets/f5bc5413-57fe-4963-8032-6cb5547ecf38" />
+
 # Taskflow – Task Management System
 
 Laravel 11 (API, Sanctum) + React (Vite) + MySQL, chạy bằng Docker Compose.
