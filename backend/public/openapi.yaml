@@ -1,0 +1,382 @@
+openapi: 3.0.3
+info:
+  title: Taskflow API
+  version: 1.0.0
+  description: |
+    API quản lý công việc cá nhân/nhóm nhỏ.
+    Đăng nhập tại `/auth/login`, lấy `token`, bấm **Authorize** và dán token (không cần tiền tố `Bearer`).
+servers:
+  - url: http://localhost:8000/api
+    description: Local
+tags:
+  - name: Auth
+  - name: Tasks
+  - name: Dashboard
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Đăng ký tài khoản
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterInput' }
+      responses:
+        '201':
+          description: Đăng ký thành công
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooMany' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Đăng nhập
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginInput' }
+            example: { email: demo@taskflow.test, password: password123 }
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooMany' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Đăng xuất (thu hồi token hiện tại)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Đã đăng xuất
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: { message: { type: string, example: Đã đăng xuất. } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Thông tin người dùng hiện tại
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: Danh sách task (tìm kiếm, lọc, sắp xếp, phân trang)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: search
+          in: query
+          description: Tìm theo tiêu đề
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/Status' }
+        - name: priority
+          in: query
+          schema: { $ref: '#/components/schemas/Priority' }
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [created_at, due_date, priority, title, position]
+            default: created_at
+        - name: direction
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+        - name: per_page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        '200':
+          description: Danh sách task có phân trang
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaskPage' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    post:
+      tags: [Tasks]
+      summary: Tạo task
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskCreate' }
+            example:
+              title: Thiết kế trang chủ
+              description: Hoàn thiện wireframe
+              status: TODO
+              priority: HIGH
+              due_date: '2026-10-05'
+              tags: [Ui, Design]
+      responses:
+        '201':
+          description: Đã tạo
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaskEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /tasks/{id}:
+    parameters:
+      - { $ref: '#/components/parameters/TaskId' }
+    get:
+      tags: [Tasks]
+      summary: Chi tiết task
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaskEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Tasks]
+      summary: Cập nhật task (gửi các trường cần đổi)
+      description: Nếu `tags` được gửi, danh sách tag của task sẽ được thay thế hoàn toàn. Đổi `status` sang `DONE` sẽ tự ghi `completed_at`.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaskUpdate' }
+      responses:
+        '200':
+          description: Đã cập nhật
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaskEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Tasks]
+      summary: Xóa task
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Đã xóa }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /tasks/{id}/move:
+    patch:
+      tags: [Tasks]
+      summary: Kanban - chuyển task sang cột/vị trí khác
+      description: Các task ở cột đích có `position` >= vị trí mới sẽ được đẩy xuống một bậc.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/TaskId' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, position]
+              properties:
+                status: { $ref: '#/components/schemas/Status' }
+                position: { type: integer, minimum: 0, example: 0 }
+      responses:
+        '200':
+          description: Đã di chuyển
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TaskEnvelope' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Thống kê và task sắp đến hạn
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: days
+          in: query
+          description: Số ngày tới được coi là "sắp đến hạn" (tối đa 90)
+          schema: { type: integer, default: 7, maximum: 90 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token Sanctum nhận được khi đăng nhập/đăng ký
+  parameters:
+    TaskId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, example: 1 }
+  responses:
+    Unauthorized:
+      description: Chưa đăng nhập hoặc token không hợp lệ
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Không tìm thấy (hoặc task không thuộc về bạn)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Dữ liệu không hợp lệ
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              errors:
+                type: object
+                additionalProperties: { type: array, items: { type: string } }
+    TooMany:
+      description: Quá nhiều yêu cầu (giới hạn 10 lần/phút)
+  schemas:
+    Status: { type: string, enum: [TODO, IN_PROGRESS, DONE] }
+    Priority: { type: string, enum: [LOW, MEDIUM, HIGH] }
+    Error:
+      type: object
+      properties: { message: { type: string } }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        avatar_url: { type: string, nullable: true }
+    RegisterInput:
+      type: object
+      required: [name, email, password, password_confirmation]
+      properties:
+        name: { type: string, maxLength: 100 }
+        email: { type: string, format: email }
+        password: { type: string, format: password, minLength: 8, description: Tối thiểu 8 ký tự, gồm chữ và số }
+        password_confirmation: { type: string, format: password }
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    AuthResponse:
+      type: object
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        token: { type: string }
+    Task:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/Status' }
+        priority: { $ref: '#/components/schemas/Priority' }
+        due_date: { type: string, format: date, nullable: true }
+        is_overdue: { type: boolean, nullable: true }
+        position: { type: integer }
+        completed_at: { type: string, format: date-time, nullable: true }
+        tags: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, maxLength: 255 }
+        description: { type: string, maxLength: 5000, nullable: true }
+        status: { $ref: '#/components/schemas/Status' }
+        priority: { $ref: '#/components/schemas/Priority' }
+        due_date: { type: string, format: date, nullable: true }
+        tags: { type: array, maxItems: 10, items: { type: string, maxLength: 50 } }
+    TaskUpdate:
+      type: object
+      properties:
+        title: { type: string, maxLength: 255 }
+        description: { type: string, maxLength: 5000, nullable: true }
+        status: { $ref: '#/components/schemas/Status' }
+        priority: { $ref: '#/components/schemas/Priority' }
+        due_date: { type: string, format: date, nullable: true }
+        tags: { type: array, maxItems: 10, items: { type: string, maxLength: 50 } }
+    TaskEnvelope:
+      type: object
+      properties:
+        data: { $ref: '#/components/schemas/Task' }
+    TaskPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Task' }
+        links:
+          type: object
+          properties:
+            first: { type: string, nullable: true }
+            last: { type: string, nullable: true }
+            prev: { type: string, nullable: true }
+            next: { type: string, nullable: true }
+        meta:
+          type: object
+          properties:
+            current_page: { type: integer }
+            last_page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+    Dashboard:
+      type: object
+      properties:
+        total: { type: integer }
+        todo: { type: integer }
+        in_progress: { type: integer }
+        done: { type: integer }
+        due_today: { type: integer, description: Số task chưa xong có hạn là hôm nay }
+        overdue: { type: integer }
+        projects:
+          type: array
+          description: Tiến độ theo tag (tối đa 3 tag nhiều task nhất)
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              total: { type: integer }
+              done: { type: integer }
+        recent:
+          type: array
+          description: 5 task cập nhật gần nhất
+          items: { $ref: '#/components/schemas/Task' }
+        upcoming:
+          type: array
+          items: { $ref: '#/components/schemas/Task' }
