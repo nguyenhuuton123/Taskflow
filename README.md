@@ -43,7 +43,3 @@ taskflow/
 
 ## API
 Xem `backend-overlay/public/openapi.yaml` hoặc trang /docs.
-### Kiểm tra sau khi deploy
-- Mở domain frontend, đăng nhập bằng tài khoản seed: `demo@taskflow.test` / `password123`.
-- Nếu trang trắng: F12 → Console xem lỗi, thường do `VITE_API_URL` sai hoặc thiếu.
-- Nếu login báo lỗi mạng: kiểm tra backend đã "Live" (không phải "Deploy failed") trong Render Dashboard, xem tab **Logs**.
