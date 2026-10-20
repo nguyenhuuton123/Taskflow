@@ -4,7 +4,7 @@
 
 Laravel 11 (API, Sanctum) + React (Vite) + MySQL, chạy bằng Docker Compose.
 
-## Chạy nhanh (chỉ cần Docker Desktop)
+## Chạy nhanh (Chỉ cần Docker Desktop)
 
 ```bash
 # 1) git clone <URL repo>
@@ -22,7 +22,7 @@ docker compose up --build
 Tài khoản demo: `demo@taskflow.test` / `password123`
 
 ## Cấu hình database
-Sửa file `.env` ở thư mục này (DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_ROOT_PASSWORD).
+Sửa file `.env` (DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_ROOT_PASSWORD).
 Đổi xong chạy: `docker compose down -v && docker compose up --build`.
 
 ## Cấu trúc
@@ -36,7 +36,7 @@ taskflow/
 └── setup.sh / setup.bat
 ```
 
-> Thư viện PHP (vendor/) được cài bên trong Docker khi build, nên trên máy bạn sẽ không có thư mục vendor/.
+> Thư viện PHP (vendor/) được cài bên trong Docker khi build, nên trên máy sẽ không có thư mục vendor/.
 
 ## Chạy không dùng Docker
 - Backend: trong `backend/` chạy `composer install`, copy `.env.example` thành `.env` rồi `php artisan key:generate`, sửa `.env` (DB_HOST=127.0.0.1, DB_DATABASE, DB_USERNAME, DB_PASSWORD), rồi `php artisan migrate --seed && php artisan serve`
